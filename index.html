@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sephora ML — Algorithm Benchmark</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0a0f; --surface:#12121a; --card:#1a1a26; --border:#2a2a40;
+  --accent1:#c084fc; --accent2:#f472b6; --accent3:#38bdf8; --accent4:#34d399;
+  --accent5:#fb923c; --text:#e8e8f0; --muted:#7070a0; --gold:#fbbf24;
+  --danger:#f87171; --green:#4ade80;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+/* HERO */
+.hero{position:relative;padding:100px 40px 80px;text-align:center;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(192,132,252,.12) 0%,transparent 70%);pointer-events:none;}
+.hero-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:4px;color:var(--accent1);text-transform:uppercase;margin-bottom:20px;opacity:0;animation:fadeUp .6s ease forwards .2s;}
+.hero-title{font-family:'Syne',sans-serif;font-size:clamp(42px,7vw,88px);font-weight:800;line-height:1;letter-spacing:-3px;background:linear-gradient(135deg,#e8e8f0 0%,var(--accent1) 50%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px;opacity:0;animation:fadeUp .6s ease forwards .35s;}
+.hero-sub{font-family:'Syne',sans-serif;font-size:clamp(20px,3vw,32px);font-weight:600;color:var(--muted);letter-spacing:-1px;margin-bottom:24px;opacity:0;animation:fadeUp .6s ease forwards .5s;}
+.hero-desc{max-width:600px;margin:0 auto 50px;font-size:15px;color:var(--muted);line-height:1.7;opacity:0;animation:fadeUp .6s ease forwards .65s;}
+.stats-row{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:80px;opacity:0;animation:fadeUp .6s ease forwards .8s;}
+.stat-chip{background:var(--card);border:1px solid var(--border);border-radius:100px;padding:10px 22px;display:flex;align-items:center;gap:8px;font-size:13px;}
+.stat-chip .dot{width:7px;height:7px;border-radius:50%;}
+.stat-chip .val{font-family:'Space Mono',monospace;color:var(--text);font-weight:700;}
+.stat-chip .lbl{color:var(--muted);}
+
+/* SECTION */
+.section{max-width:1200px;margin:0 auto;padding:0 40px 100px;position:relative;z-index:1;}
+.section-header{display:flex;align-items:baseline;gap:16px;margin-bottom:40px;}
+.section-num{font-family:'Space Mono',monospace;font-size:12px;color:var(--accent1);letter-spacing:2px;}
+.section-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;letter-spacing:-1px;}
+
+/* PIPELINE */
+.pipeline{display:flex;align-items:stretch;gap:0;margin-bottom:60px;overflow-x:auto;padding-bottom:8px;}
+.pipe-step{flex:1;min-width:160px;background:var(--card);border:1px solid var(--border);padding:24px 20px;position:relative;transition:border-color .3s;}
+.pipe-step:not(:last-child)::after{content:'→';position:absolute;right:-14px;top:50%;transform:translateY(-50%);color:var(--accent1);z-index:2;font-size:18px;}
+.pipe-step:first-child{border-radius:12px 0 0 12px;}
+.pipe-step:last-child{border-radius:0 12px 12px 0;}
+.pipe-step:hover{border-color:var(--accent1);}
+.pipe-icon{font-size:24px;margin-bottom:10px;}
+.pipe-label{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.pipe-detail{font-size:11px;color:var(--muted);line-height:1.5;}
+
+/* TABS */
+.tab-bar{display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap;}
+.tab{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px 18px;border-radius:100px;cursor:pointer;transition:all .2s;}
+.tab.active,.tab:hover{background:var(--accent1);border-color:var(--accent1);color:#fff;}
+.tab-content{display:none;}
+.tab-content.active{display:block;animation:fadeUp .35s ease;}
+
+/* ALGO CARDS */
+.algo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;margin-bottom:60px;}
+.algo-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;position:relative;overflow:hidden;transition:transform .3s,border-color .3s,box-shadow .3s;cursor:pointer;opacity:0;animation:fadeUp .5s ease forwards;}
+.algo-card:hover{transform:translateY(-4px);border-color:var(--accent1);box-shadow:0 20px 60px rgba(192,132,252,.12);}
+.algo-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;}
+.card-type-cls::before{background:linear-gradient(90deg,var(--accent3),var(--accent1));}
+.card-type-reg::before{background:linear-gradient(90deg,var(--accent4),var(--accent3));}
+.card-type-winner::before{background:linear-gradient(90deg,var(--gold),var(--accent5));}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+.card-name{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;letter-spacing:-.5px;}
+.card-badge{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:100px;}
+.badge-cls{background:rgba(56,189,248,.12);color:var(--accent3);border:1px solid rgba(56,189,248,.2);}
+.badge-reg{background:rgba(52,211,153,.12);color:var(--accent4);border:1px solid rgba(52,211,153,.2);}
+
+/* METRIC BARS */
+.dual-label{display:flex;gap:16px;margin-bottom:8px;}
+.dual-label span{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
+.dual-label .dot{width:8px;height:3px;border-radius:2px;}
+.dot-scratch{background:var(--accent1);}
+.dot-sklearn{background:var(--accent3);}
+.metric-row{margin-bottom:10px;}
+.metric-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.metric-label{font-size:11px;color:var(--muted);letter-spacing:.5px;}
+.metric-val{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;}
+.bar-track{height:5px;background:var(--border);border-radius:10px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:10px;transition:width 1.2s cubic-bezier(.16,1,.3,1);width:0;}
+.bar-scratch{background:linear-gradient(90deg,var(--accent1),var(--accent2));}
+.bar-sklearn{background:linear-gradient(90deg,var(--accent3),var(--accent4));}
+.time-row{display:flex;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.time-item{text-align:center;}
+.time-val{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;}
+.time-lbl{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* LEARNING CURVE */
+.curve-section{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+.curve-title{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:'Space Mono',monospace;}
+.curve-chart{position:relative;height:70px;background:rgba(255,255,255,.02);border-radius:8px;overflow:hidden;}
+.curve-svg{width:100%;height:100%;}
+
+/* LEADERBOARD */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:60px;}
+table{width:100%;border-collapse:collapse;}
+thead th{background:var(--surface);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:16px 20px;text-align:left;border-bottom:1px solid var(--border);}
+tbody tr{border-bottom:1px solid var(--border);transition:background .2s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(255,255,255,.02);}
+tbody tr.winner-row{background:rgba(251,191,36,.04);}
+td{padding:14px 20px;font-size:13px;}
+td:first-child{font-family:'Syne',sans-serif;font-weight:600;font-size:14px;}
+.rank-cell{font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:var(--muted);width:50px;}
+.rank-1{color:var(--gold);}
+.rank-2{color:#c0c0d0;}
+.rank-3{color:#cd7f32;}
+.delta-pill{font-family:'Space Mono',monospace;font-size:10px;padding:2px 8px;border-radius:100px;display:inline-block;}
+.delta-good{background:rgba(74,222,128,.12);color:var(--green);}
+.delta-bad{background:rgba(248,113,113,.12);color:var(--danger);}
+.delta-eq{background:rgba(112,112,160,.1);color:var(--muted);}
+
+/* BAR CHART */
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:60px;}
+.chart-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:28px;display:flex;align-items:center;gap:10px;}
+.chart-inner{display:flex;align-items:flex-end;gap:12px;height:200px;padding-bottom:32px;position:relative;border-bottom:1px solid var(--border);}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bar-pair{display:flex;gap:3px;align-items:flex-end;width:100%;}
+.cbar{flex:1;border-radius:4px 4px 0 0;transition:height 1.5s cubic-bezier(.16,1,.3,1);position:relative;min-width:14px;}
+.cbar-s{background:linear-gradient(180deg,var(--accent1),rgba(192,132,252,.5));}
+.cbar-k{background:linear-gradient(180deg,var(--accent3),rgba(56,189,248,.5));}
+.cbar:hover::after{content:attr(data-val);position:absolute;bottom:105%;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;padding:3px 7px;border-radius:4px;white-space:nowrap;pointer-events:none;}
+.chart-lbl{font-size:9px;color:var(--muted);text-align:center;line-height:1.3;margin-top:6px;}
+.chart-legend{display:flex;gap:20px;margin-top:18px;}
+.chart-legend span{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.chart-legend .sq{width:12px;height:12px;border-radius:3px;}
+
+/* WINNER */
+.winner-panel{background:linear-gradient(135deg,rgba(251,191,36,.08) 0%,rgba(251,191,36,.03) 100%);border:1px solid rgba(251,191,36,.25);border-radius:20px;padding:48px;margin-bottom:60px;position:relative;overflow:hidden;}
+.winner-panel::before{content:'';position:absolute;top:-100px;right:-100px;width:300px;height:300px;background:radial-gradient(circle,rgba(251,191,36,.08) 0%,transparent 70%);pointer-events:none;}
+.winner-crown-big{font-size:48px;margin-bottom:16px;}
+.winner-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+.winner-name{font-family:'Syne',sans-serif;font-size:clamp(32px,5vw,52px);font-weight:800;letter-spacing:-2px;margin-bottom:24px;}
+.winner-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:32px;}
+.winner-metric{background:rgba(0,0,0,.2);border-radius:12px;padding:16px;}
+.wm-val{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--gold);}
+.wm-lbl{font-size:11px;color:var(--muted);margin-top:4px;}
+.explanation{line-height:1.8;color:var(--muted);font-size:14px;}
+.explanation strong{color:var(--text);}
+.explanation ul{margin-left:1.4rem;margin-top:.5rem;}
+.explanation li{margin-bottom:.4rem;}
+
+/* EXPLAIN CARDS */
+.explain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:60px;}
+.explain-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;opacity:0;animation:fadeUp .5s ease forwards;}
+.explain-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.explain-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(255,255,255,.05);}
+.explain-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;}
+.explain-score{margin-left:auto;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;}
+.explain-text{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:10px;}
+.explain-verdict{font-size:12px;padding:8px 12px;border-radius:6px;margin-top:10px;}
+.verdict-good{background:rgba(74,222,128,.08);color:var(--green);border-left:3px solid var(--green);}
+.verdict-warn{background:rgba(251,191,36,.08);color:var(--gold);border-left:3px solid var(--gold);}
+.verdict-bad{background:rgba(248,113,113,.08);color:var(--danger);border-left:3px solid var(--danger);}
+.scratch-vs{margin-top:8px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:6px;border-left:3px solid var(--border);}
+.scratch-vs-title{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:3px;letter-spacing:1px;}
+.scratch-vs-text{font-size:12px;color:var(--text);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+#loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px;}
+.spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent1);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero" style="position:relative;z-index:1">
+  <div class="hero-label">Sephora · ML Benchmark 2024</div>
+  <div class="hero-title">Algorithm<br>Comparison</div>
+  <div class="hero-sub">8 Models · Scratch vs Library</div>
+  <div class="hero-desc">
+    Every algorithm implemented from scratch in pure NumPy, then compared against
+    the sklearn / XGBoost library equivalent. Target: <strong style="color:var(--accent1)">is_recommended</strong> (binary classification).
+  </div>
+  <div class="stats-row" id="stats-row">
+    <div class="stat-chip"><div class="dot" style="background:var(--accent1)"></div><span class="val" id="stat-rows">—</span><span class="lbl">Reviews</span></div>
+    <div class="stat-chip"><div class="dot" style="background:var(--accent3)"></div><span class="val">8</span><span class="lbl">Algorithms</span></div>
+    <div class="stat-chip"><div class="dot" style="background:var(--accent4)"></div><span class="val">16</span><span class="lbl">Implementations</span></div>
+    <div class="stat-chip"><div class="dot" style="background:var(--accent2)"></div><span class="val">6</span><span class="lbl">Metrics each</span></div>
+    <div class="stat-chip"><div class="dot" style="background:var(--gold)"></div><span class="val" id="stat-best-acc">—</span><span class="lbl">Best Accuracy</span></div>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p style="color:var(--muted);font-family:'Space Mono',monospace;font-size:12px">LOADING RESULTS FROM DATABASE …</p>
+</div>
+
+<div id="app" style="display:none;position:relative;z-index:1">
+
+<!-- ── SECTION 1: PIPELINE ── -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">01 —</span>
+    <span class="section-title">Data Pipeline</span>
+  </div>
+  <div class="pipeline">
+    <div class="pipe-step"><div class="pipe-icon">📥</div><div class="pipe-label">Raw CSVs</div><div class="pipe-detail">5 review files + product info<br>~1.09M reviews total</div></div>
+    <div class="pipe-step"><div class="pipe-icon">🔗</div><div class="pipe-label">Merge</div><div class="pipe-detail">Join reviews with product metadata on product_id</div></div>
+    <div class="pipe-step"><div class="pipe-icon">🧹</div><div class="pipe-label">Clean</div><div class="pipe-detail">Drop NaN targets, remove text & ID columns</div></div>
+    <div class="pipe-step"><div class="pipe-icon">⚙️</div><div class="pipe-label">Engineer</div><div class="pipe-detail">Helpfulness ratio, skin encodings, category dummies</div></div>
+    <div class="pipe-step"><div class="pipe-icon">💾</div><div class="pipe-label">SQLite DB</div><div class="pipe-detail">Processed features + all model results stored</div></div>
+    <div class="pipe-step"><div class="pipe-icon">🤖</div><div class="pipe-label">Train & Eval</div><div class="pipe-detail">100K sample, 80/20 split, 6 metrics per model</div></div>
+  </div>
+</div>
+
+<!-- ── SECTION 2: ALL MODELS ── -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">02 —</span>
+    <span class="section-title">All Models</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab active" onclick="showTab('all')">All Models</button>
+    <button class="tab" onclick="showTab('pair1')">📈 Linear & Logistic</button>
+    <button class="tab" onclick="showTab('pair2')">🌳 Trees & Forest</button>
+    <button class="tab" onclick="showTab('pair3')">🔵 KNN & Naive Bayes</button>
+    <button class="tab" onclick="showTab('pair4')">🚀 XGBoost & SVM</button>
+  </div>
+  <div id="tab-all"   class="tab-content active"><div class="algo-grid" id="cards-all"></div></div>
+  <div id="tab-pair1" class="tab-content"><div class="algo-grid" id="cards-pair1"></div></div>
+  <div id="tab-pair2" class="tab-content"><div class="algo-grid" id="cards-pair2"></div></div>
+  <div id="tab-pair3" class="tab-content"><div class="algo-grid" id="cards-pair3"></div></div>
+  <div id="tab-pair4" class="tab-content"><div class="algo-grid" id="cards-pair4"></div></div>
+</div>
+
+<!-- ── SECTION 3: LEADERBOARD ── -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">03 —</span>
+    <span class="section-title">Leaderboard</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">Rank</th>
+          <th>Model</th>
+          <th>Accuracy</th>
+          <th>Macro F1</th>
+          <th>Precision</th>
+          <th>Recall</th>
+          <th>Log-Loss</th>
+          <th>ROC-AUC</th>
+          <th>Δ Scratch</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── SECTION 4: ACCURACY CHART ── -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">04 —</span>
+    <span class="section-title">Accuracy Comparison</span>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">📊 Scratch vs Library — Accuracy by Model</div>
+    <div class="chart-inner" id="acc-chart"></div>
+    <div class="chart-legend">
+      <span><div class="sq" style="background:var(--accent1)"></div>From Scratch</span>
+      <span><div class="sq" style="background:var(--accent3)"></div>sklearn / Library</span>
+    </div>
+  </div>
+
+  <!-- Additional metric charts -->
+  <div class="chart-wrap" style="margin-top:20px">
+    <div class="chart-title">📉 Log-Loss Comparison (lower = better)</div>
+    <div class="chart-inner" id="logloss-chart"></div>
+    <div class="chart-legend">
+      <span><div class="sq" style="background:var(--accent2)"></div>From Scratch</span>
+      <span><div class="sq" style="background:var(--accent4)"></div>sklearn / Library</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECTION 5: WINNER ── -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">05 —</span>
+    <span class="section-title">Best Model</span>
+  </div>
+  <div id="winner-panel" class="winner-panel"></div>
+</div>
+
+<!-- ── SECTION 6: EXPLANATIONS ── -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">06 —</span>
+    <span class="section-title">Algorithm Explanations</span>
+  </div>
+  <div class="explain-grid" id="explain-grid"></div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ════════════════════════════════════════════════════
+let DATA = {records:[], ranked:[], best:{}, explanations:{}};
+
+const PAIR_FAMILIES = {
+  pair1: ["Linear Regression","Logistic Regression"],
+  pair2: ["Decision Tree","Random Forest"],
+  pair3: ["KNN","Naive Bayes"],
+  pair4: ["XGBoost/GB","SVM"],
+};
+
+function pct(v,d=2){ return v!=null ? (v*100).toFixed(d)+'%' : 'N/A'; }
+function fmt(v,d=4){ return v!=null ? Number(v).toFixed(d) : 'N/A'; }
+function colorForAcc(v){
+  if(v==null) return 'var(--muted)';
+  if(v>=.92) return 'var(--green)';
+  if(v>=.85) return 'var(--gold)';
+  if(v>=.75) return 'var(--accent5)';
+  return 'var(--danger)';
+}
+
+// ════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ════════════════════════════════════════════════════
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  setTimeout(animateBars, 100);
+}
+
+// ════════════════════════════════════════════════════
+//  LEARNING CURVE SVG
+// ════════════════════════════════════════════════════
+function makeCurveSVG(trainArr, valArr){
+  if(!trainArr||!trainArr.length) return '<div style="height:70px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">No curve data</div>';
+  const all=[...trainArr,...valArr].filter(v=>v!=null);
+  if(!all.length) return '';
+  const mn=Math.min(...all)*.98, mx=Math.max(...all)*1.005;
+  const W=300, H=70, pad=4;
+  function toSVG(arr){
+    if(!arr||!arr.length) return '';
+    const pts=arr.map((v,i)=>{
+      const x=pad+(W-2*pad)*i/(Math.max(arr.length-1,1));
+      const y=H-pad-(H-2*pad)*(v-mn)/(mx-mn||1);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    return pts.join(' ');
+  }
+  const trPts=toSVG(trainArr), vaPts=toSVG(valArr);
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:70px">
+    <defs>
+      <linearGradient id="gTr" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="var(--accent1)"/>
+        <stop offset="100%" stop-color="var(--accent2)"/>
+      </linearGradient>
+      <linearGradient id="gVa" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="var(--accent3)"/>
+        <stop offset="100%" stop-color="var(--accent4)"/>
+      </linearGradient>
+    </defs>
+    ${trPts?`<polyline points="${trPts}" fill="none" stroke="url(#gTr)" stroke-width="2" stroke-linejoin="round"/>`:'' }
+    ${vaPts?`<polyline points="${vaPts}" fill="none" stroke="url(#gVa)" stroke-width="2" stroke-linejoin="round" stroke-dasharray="4,2"/>`:'' }
+    <text x="${W-2}" y="${H-2}" text-anchor="end" fill="var(--muted)" font-size="8" font-family="monospace">
+      ${trainArr.length?`Train: ${(trainArr[trainArr.length-1]*100).toFixed(1)}%`:''}
+      ${valArr&&valArr.length?` Val: ${(valArr[valArr.length-1]*100).toFixed(1)}%`:''}
+    </text>
+  </svg>`;
+}
+
+// ════════════════════════════════════════════════════
+//  BUILD ALGO CARD
+// ════════════════════════════════════════════════════
+function buildCard(scratch, sklearn, delay=0){
+  if(!scratch && !sklearn) return '';
+  const ref   = sklearn || scratch;
+  const name  = ref.family;
+  const icon  = ref.icon || '🤖';
+  const isReg = name === 'Linear Regression';
+
+  const metrics = ['accuracy','f1_macro','precision_macro','recall_macro'];
+  const labels  = ['ACCURACY','MACRO F1','PRECISION','RECALL'];
+  const MIN=0.82, RANGE=0.18;
+
+  let metricsHtml = `
+    <div class="dual-label">
+      <span><span class="dot dot-scratch"></span>From Scratch</span>
+      <span><span class="dot dot-sklearn"></span>sklearn / Library</span>
+    </div>`;
+
+  metrics.forEach((m,i)=>{
+    const sv = scratch?.[m], kv = sklearn?.[m];
+    const sw = sv!=null ? Math.min(100,Math.max(0,(sv-MIN)/RANGE*100)) : 0;
+    const kw = kv!=null ? Math.min(100,Math.max(0,(kv-MIN)/RANGE*100)) : 0;
+    metricsHtml += `
+      <div class="metric-row">
+        <div class="metric-header">
+          <span class="metric-label">${labels[i]}</span>
+          <span>
+            ${sv!=null?`<span class="metric-val" style="color:var(--accent1)">${pct(sv)}</span>`:''}
+            ${sv!=null&&kv!=null?' / ':''}
+            ${kv!=null?`<span class="metric-val" style="color:var(--accent3)">${pct(kv)}</span>`:''}
+          </span>
+        </div>
+        ${sv!=null?`<div class="bar-track"><div class="bar-fill bar-scratch" style="width:0" data-w="${sw}"></div></div>`:''}
+        ${kv!=null?`<div style="margin-top:4px"><div class="bar-track"><div class="bar-fill bar-sklearn" style="width:0" data-w="${kw}"></div></div></div>`:''}
+      </div>`;
+  });
+
+  // Log-loss row
+  const sll=scratch?.log_loss, kll=sklearn?.log_loss;
+  if(sll!=null||kll!=null){
+    metricsHtml+=`<div class="metric-row">
+      <div class="metric-header">
+        <span class="metric-label">LOG-LOSS</span>
+        <span>
+          ${sll!=null?`<span class="metric-val" style="color:var(--accent1)">${fmt(sll,4)}</span>`:''}
+          ${sll!=null&&kll!=null?' / ':''}
+          ${kll!=null?`<span class="metric-val" style="color:var(--accent3)">${fmt(kll,4)}</span>`:''}
+        </span>
+      </div>
+    </div>`;
+  }
+
+  // Time row
+  const stm=scratch?.training_time, ktm=sklearn?.training_time;
+  const timeHtml=`<div class="time-row">
+    <div class="time-item">
+      <div class="time-val" style="color:var(--accent1)">${stm!=null?stm+'s':'—'}</div>
+      <div class="time-lbl">Scratch Time</div>
+    </div>
+    <div class="time-item">
+      <div class="time-val" style="color:var(--accent3)">${ktm!=null?ktm+'s':'—'}</div>
+      <div class="time-lbl">Library Time</div>
+    </div>
+    <div class="time-item">
+      <div class="time-val" style="color:var(--muted)">${(stm&&ktm)?((stm/Math.max(ktm,0.01)).toFixed(1)+'×'):'—'}</div>
+      <div class="time-lbl">Time Ratio</div>
+    </div>
+  </div>`;
+
+  // Learning curves (prefer sklearn curves as they have more points; fallback to scratch)
+  const trArr = (sklearn?.train_curve?.length ? sklearn.train_curve : scratch?.train_curve) || [];
+  const vaArr = (sklearn?.val_curve?.length   ? sklearn.val_curve   : scratch?.val_curve)   || [];
+  const curveHtml = `
+    <div class="curve-section">
+      <div class="curve-title">📈 Train vs Val Accuracy</div>
+      <div class="curve-chart">${makeCurveSVG(trArr, vaArr)}</div>
+      <div style="display:flex;gap:16px;margin-top:6px">
+        <span style="font-size:9px;color:var(--accent1)">— Train</span>
+        <span style="font-size:9px;color:var(--accent3)">- - Val</span>
+      </div>
+    </div>`;
+
+  return `<div class="algo-card card-type-cls" style="animation-delay:${delay}s">
+    <div class="card-top">
+      <div>
+        <div style="font-size:22px;margin-bottom:6px">${icon}</div>
+        <div class="card-name">${name}</div>
+      </div>
+      <span class="card-badge badge-cls">${isReg?'REGRESSION':'CLASSIFICATION'}</span>
+    </div>
+    ${metricsHtml}
+    ${timeHtml}
+    ${curveHtml}
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════
+//  RENDER CARDS
+// ════════════════════════════════════════════════════
+function renderCards(records){
+  // Group by family
+  const byFamily={};
+  for(const r of records){
+    if(!byFamily[r.family]) byFamily[r.family]=[];
+    byFamily[r.family].push(r);
+  }
+
+  function getScratch(list){ return list.find(r=>r.implementation==='scratch')||null; }
+  function getSklearn(list){ return list.find(r=>r.implementation==='sklearn')||null; }
+
+  let allHtml='', delay=0;
+  for(const [fam, list] of Object.entries(byFamily)){
+    const sc=getScratch(list), sk=getSklearn(list);
+    const html=buildCard(sc,sk,delay);
+    allHtml+=html;
+    delay+=0.07;
+  }
+  document.getElementById('cards-all').innerHTML=allHtml;
+
+  // Pair tabs
+  for(const [pairId, families] of Object.entries(PAIR_FAMILIES)){
+    let html=''; let d=0;
+    for(const fam of families){
+      const list=byFamily[fam]||[];
+      html+=buildCard(getScratch(list),getSklearn(list),d);
+      d+=0.1;
+    }
+    document.getElementById('cards-'+pairId).innerHTML=html;
+  }
+
+  setTimeout(animateBars,400);
+}
+
+function animateBars(){
+  document.querySelectorAll('.bar-fill[data-w]').forEach(el=>{
+    setTimeout(()=>{ el.style.width=el.dataset.w+'%'; },100);
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  LEADERBOARD
+// ════════════════════════════════════════════════════
+function renderLeaderboard(ranked, records){
+  const byFamily={};
+  for(const r of records) byFamily[r.family]=byFamily[r.family]||{};
+  for(const r of records){
+    if(r.implementation==='scratch') byFamily[r.family].scratch=r;
+    else byFamily[r.family].sklearn=r;
+  }
+
+  const medals=['🥇','🥈','🥉'];
+  const tbody=document.getElementById('leaderboard-body');
+  tbody.innerHTML=ranked.map((r,i)=>{
+    const scratchAcc=byFamily[r.family]?.scratch?.accuracy;
+    const delta=r.accuracy!=null&&scratchAcc!=null ? (r.accuracy-scratchAcc)*100 : null;
+    const deltaStr=delta!=null?(delta>0.05?'+':'')+(delta.toFixed(2))+'%':null;
+    const deltaClass=delta==null?'delta-eq':(Math.abs(delta)<0.1?'delta-eq':delta>0?'delta-bad':'delta-good');
+    const isWinner=i===0;
+    return `<tr class="${isWinner?'winner-row':''}">
+      <td class="rank-cell rank-${Math.min(i+1,3)}">${i<3?medals[i]:i+1}</td>
+      <td>${r.icon} ${r.model}</td>
+      <td style="font-family:'Space Mono',monospace;color:${colorForAcc(r.accuracy)}">${pct(r.accuracy)}</td>
+      <td style="font-family:'Space Mono',monospace;color:var(--accent1)">${pct(r.f1_macro)}</td>
+      <td style="font-family:'Space Mono',monospace">${pct(r.precision_macro)}</td>
+      <td style="font-family:'Space Mono',monospace">${pct(r.recall_macro)}</td>
+      <td style="font-family:'Space Mono',monospace;color:var(--accent5)">${fmt(r.log_loss,4)}</td>
+      <td style="font-family:'Space Mono',monospace;color:var(--accent4)">${pct(r.roc_auc)}</td>
+      <td>${deltaStr?`<span class="delta-pill ${deltaClass}">${deltaStr}</span>`:'-'}</td>
+      <td style="font-family:'Space Mono',monospace;color:var(--muted)">${r.training_time!=null?r.training_time+'s':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════
+//  BAR CHARTS
+// ════════════════════════════════════════════════════
+function renderCharts(records){
+  const byFamily={};
+  for(const r of records){
+    if(!byFamily[r.family]) byFamily[r.family]={};
+    byFamily[r.family][r.implementation]=r;
+  }
+
+  const families=Object.keys(byFamily);
+  const W=180; const minA=0.80; const rangeA=0.20;
+
+  // Accuracy chart
+  const accChart=document.getElementById('acc-chart');
+  accChart.innerHTML=families.map(fam=>{
+    const sc=byFamily[fam].scratch, sk=byFamily[fam].sklearn;
+    const sAcc=sc?.accuracy, kAcc=sk?.accuracy;
+    const sh=sAcc!=null?Math.max(4,((sAcc-minA)/rangeA)*W):0;
+    const kh=kAcc!=null?Math.max(4,((kAcc-minA)/rangeA)*W):0;
+    const short=fam.replace(' Regression','').replace(' Forest','').replace('Naive ','NB·');
+    return `<div class="chart-col">
+      <div class="bar-pair">
+        ${sAcc!=null?`<div class="cbar cbar-s" style="height:0" data-h="${sh}" data-val="Scratch: ${pct(sAcc)}"></div>`:''}
+        ${kAcc!=null?`<div class="cbar cbar-k" style="height:0" data-h="${kh}" data-val="Library: ${pct(kAcc)}"></div>`:''}
+      </div>
+      <div class="chart-lbl">${short}</div>
+    </div>`;
+  }).join('');
+
+  // Log-loss chart (inverted — lower is better, so bigger bar = worse)
+  const llChart=document.getElementById('logloss-chart');
+  const allLL=records.map(r=>r.log_loss).filter(v=>v!=null);
+  const maxLL=Math.max(...allLL,0.01);
+  llChart.innerHTML=families.map(fam=>{
+    const sc=byFamily[fam].scratch, sk=byFamily[fam].sklearn;
+    const sLL=sc?.log_loss, kLL=sk?.log_loss;
+    const sh=sLL!=null?Math.max(4,(sLL/maxLL)*W):0;
+    const kh=kLL!=null?Math.max(4,(kLL/maxLL)*W):0;
+    const short=fam.replace(' Regression','').replace(' Forest','').replace('Naive ','NB·');
+    return `<div class="chart-col">
+      <div class="bar-pair">
+        ${sLL!=null?`<div class="cbar" style="height:0;background:linear-gradient(180deg,var(--accent2),rgba(244,114,182,.5))" data-h="${sh}" data-val="Scratch LL: ${fmt(sLL,4)}"></div>`:''}
+        ${kLL!=null?`<div class="cbar" style="height:0;background:linear-gradient(180deg,var(--accent4),rgba(52,211,153,.5))" data-h="${kh}" data-val="Library LL: ${fmt(kLL,4)}"></div>`:''}
+      </div>
+      <div class="chart-lbl">${short}</div>
+    </div>`;
+  }).join('');
+
+  setTimeout(()=>{
+    document.querySelectorAll('.cbar[data-h]').forEach(el=>{
+      el.style.height=el.dataset.h+'px';
+    });
+  },600);
+}
+
+// ════════════════════════════════════════════════════
+//  WINNER PANEL
+// ════════════════════════════════════════════════════
+function renderWinner(best, bestExplanation){
+  if(!best||!best.model) return;
+  document.getElementById('winner-panel').innerHTML=`
+    <div class="winner-crown-big">🏆</div>
+    <div class="winner-title">Best Overall Model</div>
+    <div class="winner-name">${best.model}</div>
+    <div class="winner-grid">
+      <div class="winner-metric"><div class="wm-val">${pct(best.accuracy)}</div><div class="wm-lbl">Accuracy</div></div>
+      <div class="winner-metric"><div class="wm-val">${pct(best.f1_macro)}</div><div class="wm-lbl">Macro F1</div></div>
+      <div class="winner-metric"><div class="wm-val">${pct(best.precision_macro)}</div><div class="wm-lbl">Precision</div></div>
+      <div class="winner-metric"><div class="wm-val">${pct(best.recall_macro)}</div><div class="wm-lbl">Recall</div></div>
+      <div class="winner-metric"><div class="wm-val">${fmt(best.log_loss,4)}</div><div class="wm-lbl">Log-Loss</div></div>
+      <div class="winner-metric"><div class="wm-val">${pct(best.roc_auc)}</div><div class="wm-lbl">ROC-AUC</div></div>
+    </div>
+    <div class="explanation">${bestExplanation}</div>`;
+}
+
+// ════════════════════════════════════════════════════
+//  EXPLANATIONS
+// ════════════════════════════════════════════════════
+function renderExplanations(records, explanations){
+  const byFamily={};
+  for(const r of records){
+    if(!byFamily[r.family]) byFamily[r.family]={};
+    byFamily[r.family][r.implementation]=r;
+  }
+  const colorMap={good:'var(--green)',warn:'var(--gold)',bad:'var(--danger)'};
+  const grid=document.getElementById('explain-grid');
+  let delay=0;
+  for(const [name,exp] of Object.entries(explanations)){
+    const sk=byFamily[name]?.sklearn, sc=byFamily[name]?.scratch;
+    const mainAcc=sk?.accuracy||sc?.accuracy;
+    const icon=records.find(r=>r.family===name)?.icon||'🤖';
+    grid.innerHTML+=`<div class="explain-card" style="animation-delay:${delay}s">
+      <div class="explain-head">
+        <div class="explain-icon">${icon}</div>
+        <div>
+          <div class="explain-name">${name}</div>
+          <div style="font-size:10px;color:var(--muted)">classification · target: is_recommended</div>
+        </div>
+        <div class="explain-score" style="color:${colorMap[exp.verdict]||'var(--muted)'}">${mainAcc!=null?pct(mainAcc):'—'}</div>
+      </div>
+      <div class="explain-text">${exp.text}</div>
+      <div class="scratch-vs">
+        <div class="scratch-vs-title">SCRATCH vs LIBRARY</div>
+        <div class="scratch-vs-text">${exp.scratchVsLib}</div>
+      </div>
+      <div class="explain-verdict verdict-${exp.verdict}">${exp.verdictText}</div>
+    </div>`;
+    delay+=0.06;
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════
+fetch('/api/results')
+  .then(r=>r.json())
+  .then(data=>{
+    document.getElementById('loading').style.display='none';
+    if(data.error){
+      document.getElementById('loading').innerHTML=
+        `<p style="color:var(--danger);font-family:'Space Mono',monospace;text-align:center;max-width:600px;line-height:1.8">${data.error}<br><br>Run the model scripts first, then refresh.</p>`;
+      document.getElementById('loading').style.display='flex';
+      return;
+    }
+    DATA=data;
+    document.getElementById('app').style.display='block';
+
+    const bestRanked=data.ranked[0];
+    document.getElementById('stat-rows').textContent='~1.09M';
+    document.getElementById('stat-best-acc').textContent=bestRanked?pct(bestRanked.accuracy):'—';
+
+    renderCards(data.records);
+    renderLeaderboard(data.ranked, data.records);
+    renderCharts(data.records);
+    renderWinner(data.best, data.best_explanation);
+    renderExplanations(data.records, data.explanations);
+  })
+  .catch(e=>{
+    document.getElementById('loading').innerHTML=
+      `<p style="color:var(--danger)">Error: ${e.message}</p>`;
+  });
+</script>
+</body>
+</html>
